@@ -151,19 +151,43 @@ export default function FitnessApp() {
     {id:"settings",icon:Settings,label:"설정"},
   ];
 
-  return (
+return (
     <div style={{...cssVars, background:C.bg, minHeight:"100vh", color:C.text, fontFamily:"-apple-system,BlinkMacSystemFont,'Pretendard',system-ui,sans-serif", maxWidth:440, margin:"0 auto", paddingBottom:80}}>
-      {/* Header */}
-      <div style={{background:C.card, borderBottom:`1px solid ${C.border}`, padding:"14px 18px 10px", position:"sticky", top:0, zIndex:50, display:"flex", justifyContent:"space-between", alignItems:"center"}}>
+      
+      {/* ✨ 1. 브라우저 기본 여백 없애기 (외곽 테두리 제거) */}
+      <style>{`
+        html, body { 
+          margin: 0; 
+          padding: 0; 
+          background-color: ${C.bg}; 
+          overflow-x: hidden;
+          -webkit-tap-highlight-color: transparent; 
+        }
+        * { box-sizing: border-box; }
+      `}</style>
+
+      {/* ✨ 2. 네이티브 앱 감성의 반투명 블러 헤더 적용 */}
+      <div style={{
+        background: `${C.bg}cc`, /* 약간 투명하게 처리 */
+        backdropFilter: "blur(12px)", /* 아이폰/갤럭시 네이티브 앱 특유의 블러 효과 */
+        WebkitBackdropFilter: "blur(12px)",
+        padding: "calc(env(safe-area-inset-top) + 14px) 18px 10px", /* 폰 상단 카메라/노치 여백 확보 */
+        position: "sticky", 
+        top: 0, 
+        zIndex: 50, 
+        display: "flex", 
+        justifyContent: "space-between", 
+        alignItems: "center"
+      }}>
         <div>
           <div style={{fontSize:11, color:C.sub, marginBottom:2}}>
             {new Date().toLocaleDateString("ko-KR",{month:"long",day:"numeric",weekday:"short"})}
           </div>
-          <div style={{fontSize:19, fontWeight:700, letterSpacing:-0.5}}>FitTrack <span style={{color:C.cal}}>●</span></div>
+          <div style={{fontSize:19, fontWeight:800, letterSpacing:-0.5}}>FitTrack <span style={{color:C.cal}}>●</span></div>
         </div>
         <button onClick={() => setSettings(s=>({...s, dark:!s.dark}))}
-          style={{background:C.card2, border:`1px solid ${C.border}`, borderRadius:10, padding:"7px 10px", cursor:"pointer", color:C.sub, display:"flex", alignItems:"center"}}>
-          {dark ? <Sun size={15}/> : <Moon size={15}/>}
+          style={{background:"transparent", border:"none", padding:"6px", cursor:"pointer", color:C.sub, display:"flex", alignItems:"center"}}>
+          {dark ? <Sun size={18}/> : <Moon size={18}/>}
         </button>
       </div>
 
