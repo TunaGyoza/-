@@ -227,7 +227,7 @@ function DashboardTab({C, totals, meals, workouts, settings, dark}) {
     target: targetCal,
   })), [meals, targetCal]);
 
-  const card = {background:C.card, borderRadius:18, padding:16, border:`1px solid ${C.border}`, marginBottom:10};
+  const card = {background:C.card, borderRadius:18, padding:16, marginBottom:10};
 
   return (
     <div>
