@@ -27,7 +27,6 @@ const store = {
   }
 };
 
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const getToday = () => new Date().toISOString().split("T")[0];
 const getNow = () => new Date().toLocaleTimeString("ko-KR", { hour:"2-digit", minute:"2-digit", hour12:false });
@@ -39,6 +38,20 @@ const getLast7 = () => {
 };
 const dayLabel = s => ["일","월","화","수","목","금","토"][new Date(s+"T00:00:00").getDay()];
 const r = n => Math.round(n * 10) / 10;
+
+// 데이터 정규화 및 볼륨 계산
+const normalizeWorkout = (w) => {
+  if (Array.isArray(w.sets)) return w; 
+  return {
+    ...w,
+    sets: Array.from({length: w.sets}, () => ({weight: w.weight, reps: w.reps}))
+  };
+};
+
+const calcVolume = (w) => {
+  const nw = normalizeWorkout(w);
+  return nw.sets.reduce((a, s) => a + s.weight * s.reps, 0);
+};
 
 // ─── Components ───────────────────────────────────────────────────────────────
 function Ring({ pct, size=130, stroke=10, color, children }) {
@@ -107,7 +120,7 @@ export default function FitnessApp() {
     text: dark ? "#e8eef7" : "#0d1320",
     sub: dark ? "#5a6a8a" : "#8a9ab5",
     border: dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.07)",
-    cal: "#f97316", p: "#22c55e", c: "#3b82f6", f: "#a855f7",
+    cal: "#f97316", p: "#22c55e", c: "#3b82f6", f: "#c084fc",
   };
 
   const today = getToday();
@@ -138,23 +151,45 @@ export default function FitnessApp() {
   ];
 
   return (
-    <div style={{...cssVars, background:C.bg, minHeight:"100vh", color:C.text, fontFamily:"-apple-system,BlinkMacSystemFont,'Pretendard',system-ui,sans-serif", maxWidth:440, margin:"0 auto", paddingBottom:80}}>
-      {/* Header - 상단 바 하단 테두리 제거 ✨ */}
-      <div style={{background:C.card, padding:"14px 18px 10px", position:"sticky", top:0, zIndex:50, display:"flex", justifyContent:"space-between", alignItems:"center"}}>
+    <div style={{...cssVars, background:C.bg, minHeight:"100vh", color:C.text, fontFamily:"-apple-system,BlinkMacSystemFont,'Pretendard',system-ui,sans-serif", width:"100%", margin:"0 auto", paddingBottom:100}}>
+      
+      <style>{`
+        html, body { 
+          margin: 0; 
+          padding: 0; 
+          background-color: ${C.bg}; 
+          overflow-x: hidden;
+          -webkit-tap-highlight-color: transparent; 
+        }
+        * { box-sizing: border-box; }
+      `}</style>
+
+      {/* Header */}
+      <div style={{
+        background: `${C.bg}cc`, 
+        backdropFilter: "blur(12px)", 
+        WebkitBackdropFilter: "blur(12px)",
+        padding: "calc(env(safe-area-inset-top) + 14px) 18px 10px", 
+        position: "sticky", 
+        top: 0, 
+        zIndex: 50, 
+        display: "flex", 
+        justifyContent: "space-between", 
+        alignItems: "center"
+      }}>
         <div>
           <div style={{fontSize:11, color:C.sub, marginBottom:2}}>
             {new Date().toLocaleDateString("ko-KR",{month:"long",day:"numeric",weekday:"short"})}
           </div>
-          <div style={{fontSize:19, fontWeight:700, letterSpacing:-0.5}}>FitTrack <span style={{color:C.cal}}>●</span></div>
+          <div style={{fontSize:19, fontWeight:800, letterSpacing:-0.5}}>FitTrack <span style={{color:C.cal}}>●</span></div>
         </div>
         <button onClick={() => setSettings(s=>({...s, dark:!s.dark}))}
-          style={{background:C.card2, border:`1px solid ${C.border}`, borderRadius:10, padding:"7px 10px", cursor:"pointer", color:C.sub, display:"flex", alignItems:"center"}}>
-          {dark ? <Sun size={15}/> : <Moon size={15}/>}
+          style={{background:"transparent", border:"none", padding:"6px", cursor:"pointer", color:C.sub, display:"flex", alignItems:"center"}}>
+          {dark ? <Sun size={18}/> : <Moon size={18}/>}
         </button>
       </div>
 
-      {/* Content */}
-      <div style={{padding:"14px 14px 0"}}>
+      <div style={{padding:"14px 6px 0"}}>
         {tab==="home"     && <DashboardTab C={C} totals={totals} meals={meals} workouts={workouts} settings={settings} dark={dark}/>}
         {tab==="workout"  && <WorkoutTab C={C} todayWorkouts={todayWorkouts} workouts={workouts} addWorkout={addWorkout} removeWorkout={removeWorkout}/>}
         {tab==="meal"     && <MealTab C={C} todayMeals={todayMeals} addMeal={addMeal} removeMeal={removeMeal} totals={totals} settings={settings}/>}
@@ -163,7 +198,7 @@ export default function FitnessApp() {
       </div>
 
       {/* Bottom Nav */}
-      <nav style={{position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:440, background:C.card, borderTop:`1px solid ${C.border}`, display:"flex", zIndex:50, paddingBottom:"env(safe-area-inset-bottom)"}}>
+      <nav style={{position:"fixed", bottom:0, left:0, width:"100%", background:C.card, borderTop:`1px solid ${C.border}`, display:"flex", zIndex:50, paddingBottom:"calc(env(safe-area-inset-bottom) + 12px)"}}>
         {tabs.map(({id,icon:Icon,label}) => (
           <button key={id} onClick={()=>setTab(id)} style={{flex:1, padding:"10px 0 8px", background:"none", border:"none", cursor:"pointer", color:tab===id?C.cal:C.sub, display:"flex", flexDirection:"column", alignItems:"center", gap:3, fontSize:10, fontWeight:tab===id?700:400, transition:"color 0.2s"}}>
             <Icon size={19}/>
@@ -183,14 +218,13 @@ function DashboardTab({C, totals, meals, workouts, settings, dark}) {
   const today = getToday();
   const todayWkts = workouts[today] || [];
   
-  const vol = useMemo(() => todayWkts.reduce((a,w) => a + w.weight*w.sets*w.reps, 0), [todayWkts]);
+  const vol = useMemo(() => todayWkts.reduce((a,w) => a + calcVolume(w), 0), [todayWkts]);
   const chart = useMemo(() => getLast7().map(d => ({
     day: dayLabel(d),
     cal: Math.round((meals[d]||[]).reduce((a,m)=>a+m.cal,0)),
     target: targetCal,
   })), [meals, targetCal]);
 
-  // card 스타일에서 테두리(border) 제거 ✨
   const card = {background:C.card, borderRadius:18, padding:16, marginBottom:10};
 
   return (
@@ -215,7 +249,6 @@ function DashboardTab({C, totals, meals, workouts, settings, dark}) {
         </Ring>
       </div>
 
-      {/* 작은 요약 박스들의 테두리(border) 제거 ✨ */}
       <div style={{display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:10}}>
         {[{l:"단백질",v:totals.p,m:targetProtein,col:C.p},{l:"탄수화물",v:totals.c,m:targetCarbs,col:C.c},{l:"지방",v:totals.f,m:targetFat,col:C.f}].map(({l,v,m,col}) => (
           <div key={l} style={{background:C.card, borderRadius:14, padding:"11px 8px", textAlign:"center"}}>
@@ -261,62 +294,107 @@ function DashboardTab({C, totals, meals, workouts, settings, dark}) {
   );
 }
 
-// ─── Workout Tab ───────────────────────────────────────────────────────────────
+// ─── Workout Tab (모달) ──────────────────────────────────
+function WorkoutModal({C, onClose, onSave}) {
+  const [name, setName] = useState("");
+  const [sets, setSets] = useState([{weight:"", reps:""}]);
+
+  const addSet = () => setSets(s => [...s, {weight:"", reps:""}]);
+  const removeSet = (i) => setSets(s => s.filter((_,idx) => idx!==i));
+  const updateSet = (i, field, val) => setSets(s => s.map((s2,idx) => idx===i ? {...s2, [field]:val} : s2));
+
+  const handleSave = () => {
+    if (!name) return;
+    const validSets = sets.filter(s => s.weight!=="" && s.reps!=="");
+    if (validSets.length===0) return;
+    onSave({
+      id: Date.now(),
+      name,
+      sets: validSets.map(s => ({weight: parseFloat(s.weight), reps: parseInt(s.reps)})),
+      time: getNow(),
+      date: getToday()
+    });
+    onClose();
+  };
+
+  const inp = {background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:10, padding:"10px 12px", color:"#e8eef7", fontSize:14, outline:"none", width:"100%", boxSizing:"border-box"};
+
+  return (
+    <div style={{position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:200, display:"flex", alignItems:"flex-end", justifyContent:"center"}}
+      onClick={e => e.target===e.currentTarget && onClose()}>
+      <div style={{background:"#0f1729", borderRadius:"20px 20px 0 0", width:"100%", maxWidth:440, padding:20, paddingBottom:40, maxHeight:"85vh", overflowY:"auto"}}>
+        
+        <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20}}>
+          <div style={{fontSize:17, fontWeight:700}}>운동 추가</div>
+          <button onClick={onClose} style={{background:"none", border:"none", cursor:"pointer", color:"#5a6a8a", display:"flex"}}>
+            <X size={20}/>
+          </button>
+        </div>
+
+        <input style={{...inp, marginBottom:20}} placeholder="운동 이름 (예: 벤치프레스)" value={name} onChange={e=>setName(e.target.value)}/>
+
+        <div style={{display:"flex", flexDirection:"column", gap:8, marginBottom:12}}>
+          {sets.map((s, i) => (
+            <div key={i} style={{display:"flex", alignItems:"center", gap:8, background:"rgba(255,255,255,0.04)", borderRadius:12, padding:"10px 12px"}}>
+              <span style={{fontSize:13, color:"#5a6a8a", minWidth:36}}>{i+1}세트</span>
+              <input style={{...inp, textAlign:"center"}} placeholder="무게" type="number" inputMode="decimal" value={s.weight} onChange={e=>updateSet(i,"weight",e.target.value)}/>
+              <span style={{fontSize:13, color:"#5a6a8a"}}>kg</span>
+              <input style={{...inp, textAlign:"center"}} placeholder="횟수" type="number" inputMode="numeric" value={s.reps} onChange={e=>updateSet(i,"reps",e.target.value)}/>
+              <span style={{fontSize:13, color:"#5a6a8a"}}>회</span>
+              {sets.length > 1 &&
+                <button onClick={()=>removeSet(i)} style={{background:"none", border:"none", cursor:"pointer", color:"#ef4444", display:"flex", flexShrink:0}}>
+                  <Trash2 size={15}/>
+                </button>
+              }
+            </div>
+          ))}
+        </div>
+
+        <button onClick={addSet} style={{width:"100%", padding:"11px", borderRadius:12, background:"rgba(255,255,255,0.05)", border:"1px dashed rgba(255,255,255,0.15)", color:"#5a6a8a", fontSize:14, cursor:"pointer", marginBottom:16}}>
+          + 세트 추가
+        </button>
+
+        <button onClick={handleSave} style={{width:"100%", padding:"13px", borderRadius:12, background:"#f97316", border:"none", color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer"}}>
+          저장하기
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function WorkoutTab({C, todayWorkouts, workouts, addWorkout, removeWorkout}) {
-  const [name, setName] = useState(""); const [weight, setWeight] = useState("");
-  const [sets, setSets] = useState(""); const [reps, setReps] = useState("");
-  const [ok, setOk] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   
-  const vol = useMemo(() => todayWorkouts.reduce((a,w)=>a+w.weight*w.sets*w.reps, 0), [todayWorkouts]);
+  const vol = useMemo(() => todayWorkouts.reduce((a,w)=>a+calcVolume(w), 0), [todayWorkouts]);
 
   const prs = useMemo(() => {
     const records = {};
-    Object.values(workouts).flat().forEach(w => { 
-      const k=w.name.toLowerCase(); 
-      if (!records[k]||w.weight>records[k]) records[k]=w.weight; 
-    });
+    Object.values(workouts).flat().forEach(w => {
+    const nw = normalizeWorkout(w);
+    const k = w.name.toLowerCase();
+    const maxW = Math.max(...nw.sets.map(s => s.weight));
+    if (!records[k] || maxW > records[k]) records[k] = maxW;
+  });
     return records;
   }, [workouts]);
 
   const weekVol = useMemo(() => getLast7().reduce((a,d)=>{
-    return a + (workouts[d]||[]).reduce((b,w)=>b+w.weight*w.sets*w.reps, 0);
+    return a + (workouts[d]||[]).reduce((b,w)=>b+calcVolume(w), 0);
   }, 0), [workouts]);
 
-  const handleAdd = () => {
-    if (!name||!weight||!sets||!reps) return;
-    addWorkout({id:Date.now(), name, weight:parseFloat(weight), sets:parseInt(sets), reps:parseInt(reps), time:getNow(), date:getToday()});
-    setName("");setWeight("");setSets("");setReps("");
-    setOk(true); setTimeout(()=>setOk(false),1600);
-  };
-
-  const inp = {background:C.card2, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 12px", color:C.text, fontSize:14, outline:"none", width:"100%", boxSizing:"border-box"};
-  // card 스타일에서 테두리(border) 제거 ✨
   const card = {background:C.card, borderRadius:18, padding:16, marginBottom:10};
-  const preview = name&&weight&&sets&&reps ? parseFloat(weight)*parseInt(sets)*parseInt(reps) : null;
 
   return (
     <div>
-      <div style={card}>
-        <div style={{fontSize:15, fontWeight:700, marginBottom:14}}>운동 추가</div>
-        <div style={{display:"flex", flexDirection:"column", gap:9}}>
-          <input style={inp} placeholder="운동명 (예: 스쿼트, 벤치프레스)" value={name} onChange={e=>setName(e.target.value)}/>
-          <input style={inp} placeholder="무게 (kg)" type="number" inputMode="decimal" value={weight} onChange={e=>setWeight(e.target.value)}/>
-          <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8}}>
-            <input style={inp} placeholder="세트 수" type="number" inputMode="numeric" value={sets} onChange={e=>setSets(e.target.value)}/>
-            <input style={inp} placeholder="반복 수" type="number" inputMode="numeric" value={reps} onChange={e=>setReps(e.target.value)}/>
-          </div>
-          {preview!==null && (
-            <div style={{background:C.card2, borderRadius:10, padding:"8px 12px", fontSize:13, color:C.sub}}>
-              예상 볼륨: <span style={{color:C.p, fontWeight:700}}>{preview.toLocaleString()} kg</span>
-            </div>
-          )}
-          <button onClick={handleAdd} style={{background:ok?"#16a34a":C.cal, color:"#fff", border:"none", borderRadius:12, padding:"12px", fontWeight:700, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:7, transition:"background 0.3s"}}>
-            {ok ? <><Check size={15}/> 저장완료!</> : <><Plus size={15}/> 저장하기</>}
-          </button>
-        </div>
+      <div style={{...card}}>
+        <button onClick={() => setShowModal(true)}
+          style={{width:"100%", padding:"13px", borderRadius:12, background:"#f97316", border:"none", color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8}}>
+          <Plus size={16}/> 운동 추가
+        </button>
       </div>
 
-      {/* 작은 요약 박스들의 테두리(border) 제거 ✨ */}
+      {showModal && <WorkoutModal C={C} onClose={() => setShowModal(false)} onSave={addWorkout}/>}
+
       <div style={{display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:10}}>
         {[{l:"오늘 볼륨",v:`${vol.toLocaleString()}kg`,col:C.p},{l:"오늘 종목",v:`${todayWorkouts.length}개`,col:C.c},{l:"주간 볼륨",v:`${Math.round(weekVol/1000).toLocaleString()}t`,col:C.f}].map(({l,v,col})=>(
           <div key={l} style={{background:C.card, borderRadius:14, padding:12, textAlign:"center"}}>
@@ -332,7 +410,9 @@ function WorkoutTab({C, todayWorkouts, workouts, addWorkout, removeWorkout}) {
           ? <div style={{color:C.sub, fontSize:13, textAlign:"center", padding:"20px 0"}}>운동을 추가해보세요 💪</div>
           : <div style={{display:"flex", flexDirection:"column", gap:8}}>
               {todayWorkouts.map(w => {
-                const isPR = prs[w.name.toLowerCase()]===w.weight && w.weight>0;
+                const nw = normalizeWorkout(w);
+                const maxW = Math.max(...nw.sets.map(s => s.weight));
+                const isPR = prs[w.name.toLowerCase()] === maxW && maxW > 0;
                 return (
                   <div key={w.id} style={{background:C.card2, borderRadius:12, padding:"11px 13px", display:"flex", alignItems:"center", gap:10}}>
                     <div style={{flex:1}}>
@@ -340,8 +420,10 @@ function WorkoutTab({C, todayWorkouts, workouts, addWorkout, removeWorkout}) {
                         <span style={{fontWeight:600, fontSize:14}}>{w.name}</span>
                         {isPR && <span style={{fontSize:10, color:"#eab308", background:"rgba(234,179,8,0.12)", borderRadius:6, padding:"1px 5px", fontWeight:600}}>🏆 PR</span>}
                       </div>
-                      <div style={{fontSize:12, color:C.sub}}>{w.weight}kg × {w.sets}세트 × {w.reps}회 · {w.time}</div>
-                      <div style={{fontSize:12, color:C.p, fontWeight:600, marginTop:2}}>볼륨 {(w.weight*w.sets*w.reps).toLocaleString()}kg</div>
+                      {normalizeWorkout(w).sets.map((s,i) => (
+                        <div key={i} style={{fontSize:12, color:C.sub}}>{i+1}세트 · {s.weight}kg × {s.reps}회</div>
+                      ))}
+                      <div style={{fontSize:12, color:C.p, fontWeight:600, marginTop:2}}>볼륨 {calcVolume(w).toLocaleString()}kg · {w.time}</div>
                     </div>
                     <button onClick={()=>removeWorkout(w.id)} style={{background:"none", border:"none", cursor:"pointer", color:"#ef4444", padding:4, display:"flex"}}>
                       <Trash2 size={14}/>
@@ -408,8 +490,7 @@ function MealTab({C, todayMeals, addMeal, removeMeal, totals, settings}) {
     setOkDirect(true); setTimeout(() => setOkDirect(false), 1600);
   };
 
-  const inp = { background: C.card2, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", color: C.text, fontSize: 14, outline: "none", width: "100%", boxSizing: "border-box" };
-  // card 스타일에서 테두리(border) 제거 ✨
+  const inp = { background: C.card2, border: "none", borderRadius: 10, padding: "12px 12px", color: C.text, fontSize: 14, outline: "none", width: "100%", boxSizing: "border-box" };
   const card = { background: C.card, borderRadius: 18, padding: 16, marginBottom: 10 };
   const { targetCal, targetProtein, targetCarbs, targetFat } = settings;
 
@@ -427,7 +508,6 @@ function MealTab({C, todayMeals, addMeal, removeMeal, totals, settings}) {
             </button>
           )}
         </div>
-        {/* 검색 결과 목록의 테두리(border) 제거 ✨ */}
         {results.length > 0 && !sel && (
           <div style={{ background: C.card2, borderRadius: 12, overflow: "hidden", marginBottom: 9 }}>
             {results.map((food, i) => (
@@ -451,7 +531,6 @@ function MealTab({C, todayMeals, addMeal, removeMeal, totals, settings}) {
               {sel.hint&&<span style={{color:C.cal}}> · {sel.hint}</span>}
             </div>
             <input style={{ ...inp, marginBottom: 8 }} placeholder={`수량 (${sel.unit})`} type="number" inputMode="decimal" value={grams} onChange={e => setGrams(e.target.value)} />
-            {/* 영양성분 박스들의 테두리(border) 제거 ✨ */}
             {prev && (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6, marginBottom: 9 }}>
                 {[{ l: "칼로리", v: prev.cal, col: C.cal }, { l: "단백질", v: prev.p, col: C.p }, { l: "탄수", v: prev.c, col: C.c }, { l: "지방", v: prev.f, col: C.f }].map(m => (
@@ -554,7 +633,6 @@ function AnalysisTab({C, totals, meals, workouts, settings, dark}) {
     {l:"탄수화물",v:totals.c,m:targetCarbs,u:"g",col:C.c},
     {l:"지방",v:totals.f,m:targetFat,u:"g",col:C.f},
   ];
-  // card 스타일에서 테두리(border) 제거 ✨
   const card = {background:C.card, borderRadius:18, padding:16, marginBottom:10};
 
   return (
@@ -567,7 +645,6 @@ function AnalysisTab({C, totals, meals, workouts, settings, dark}) {
               <span style={{fontWeight:500}}>{m.l}</span>
               <span><span style={{color:m.col, fontWeight:700}}>{Math.round(m.v)}</span><span style={{color:C.sub}}> / {m.m}{m.u} ({Math.round(m.v/m.m*100)}%)</span></span>
             </div>
-            {/* 게이지 배경색을 C.card2로 바꾸고 테두리 제거 ✨ */}
             <div style={{height:8, borderRadius:4, overflow:"hidden", background:C.card2}}>
               <div style={{height:"100%", borderRadius:4, background:m.col, width:`${Math.min(m.v/m.m*100,100)}%`, transition:"width 0.6s ease"}}/>
             </div>
@@ -575,7 +652,6 @@ function AnalysisTab({C, totals, meals, workouts, settings, dark}) {
         ))}
       </div>
 
-      {/* 분석 요청 카드는 파란색 테두리를 유지합니다 (강조) */}
       <div style={{background:dark?"#0c1428":"#1e3a5f", borderRadius:18, padding:16, border:`1px solid rgba(59,130,246,0.25)`, marginBottom:10}}>
         <div style={{display:"flex", alignItems:"center", gap:8, marginBottom:6}}>
           <div style={{width:8, height:8, borderRadius:"50%", background:C.cal, boxShadow:`0 0 6px ${C.cal}`}}/>
@@ -589,7 +665,6 @@ function AnalysisTab({C, totals, meals, workouts, settings, dark}) {
 
       <div style={card}>
         <div style={{fontSize:15, fontWeight:700, marginBottom:12}}>주간 통계</div>
-        {/* 작은 요약 박스들의 테두리(border) 제거 ✨ */}
         <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14}}>
           {[{l:"일일 평균 칼로리",v:`${avgCal.toLocaleString()}`,u:"kcal",col:C.cal,sub:`목표 ${targetCal}`},{l:"운동 일수",v:wkDays,u:"일",col:C.p,sub:"목표 4~5일"}].map(({l,v,u,col,sub})=>(
             <div key={l} style={{background:C.card2, borderRadius:14, padding:13}}>
@@ -641,7 +716,6 @@ function calculateTargets(profile) {
   let bmr = (10 * weight) + (6.25 * height) - (5 * age);
   bmr += (gender === "male") ? 5 : -161;
 
-  // 활동 지수: 1.35 (보통 활동), 1.55 (활동적) 등
   const activity = goal === "cut" ? 1.35 : 1.55; 
   const tdee = (bmr * activity) + exerciseCal;
 
@@ -660,6 +734,37 @@ function calculateTargets(profile) {
     targetCal: Math.round(targetCal), targetProtein: Math.round(targetP),
     targetCarbs: Math.round(targetC), targetFat: Math.round(targetF)
   };
+}
+
+function SliderRow({label, val, min, max, step=1, color, unit, onCommit}) {
+  const [localVal, setLocalVal] = useState(val);
+  useEffect(() => { setLocalVal(val); }, [val]);
+
+  const pct = ((localVal - min) / (max - min)) * 100;
+
+  return (
+    <div style={{marginBottom:18}}>
+      <div style={{display:"flex", justifyContent:"space-between", fontSize:13, fontWeight:500, marginBottom:6}}>
+        <span>{label}</span>
+        <span style={{color, fontWeight:700}}>{localVal} {unit}</span>
+      </div>
+      <div style={{position:"relative", height:18, display:"flex", alignItems:"center"}}>
+        <div style={{position:"absolute", width:"100%", height:4, borderRadius:2, background:"rgba(255,255,255,0.12)"}}/>
+        <div style={{position:"absolute", width:`${pct}%`, height:4, borderRadius:2, background:color, transition:"width 0.1s"}}/>
+        <input
+          type="range" min={min} max={max} step={step} value={localVal}
+          onChange={e => setLocalVal(Number(e.target.value))}
+          onMouseUp={() => onCommit(localVal)}
+          onTouchEnd={() => onCommit(localVal)}
+          style={{position:"absolute", width:"100%", opacity:0, height:18, cursor:"pointer", margin:0}}
+        />
+        <div style={{position:"absolute", left:`calc(${pct}% - 9px)`, width:18, height:18, borderRadius:"50%", background:color, boxShadow:`0 0 6px ${color}55`, pointerEvents:"none", transition:"left 0.1s"}}/>
+      </div>
+      <div style={{display:"flex", justifyContent:"space-between", fontSize:10, color:"var(--sub)", marginTop:4}}>
+        <span>{min}{unit}</span><span>{max}{unit}</span>
+      </div>
+    </div>
+  );
 }
 
 // ─── Settings Tab ──────────────────────────────────────────────────────────────
@@ -685,7 +790,6 @@ function SettingsTab({C, settings, setSettings, setMeals, setWorkouts}) {
   const NumberStepper = ({ label, field, val, min }) => (
     <div style={{marginBottom:18}}>
       <div style={{fontSize:13, color:C.sub, marginBottom:6}}>{label}</div>
-      {/* 배경색을 C.card2로 바꾸고 테두리 제거 ✨ */}
       <div style={{display:"flex", alignItems:"center", background:C.card2, borderRadius:10, overflow:"hidden"}}>
         <button onClick={() => handleProfileChange(field, Math.max(min, val - 1))} 
           style={{padding:"12px 20px", background:"none", border:"none", color:C.sub, fontSize:18, fontWeight:600, cursor:"pointer"}}>-</button>
@@ -698,37 +802,12 @@ function SettingsTab({C, settings, setSettings, setMeals, setWorkouts}) {
     </div>
   );
 
-  const SliderRow = ({label, val, min, max, step=1, key2, color, unit}) => {
-    const [localVal, setLocalVal] = useState(val);
-    useEffect(() => { setLocalVal(val); }, [val]);
-
-    return (
-      <div style={{marginBottom:18}}>
-        <div style={{display:"flex", justifyContent:"space-between", fontSize:13, fontWeight:500, marginBottom:6}}>
-          <span>{label}</span>
-          <span style={{color, fontWeight:700}}>{localVal} {unit}</span>
-        </div>
-        <input 
-          type="range" min={min} max={max} step={step} value={localVal} 
-          onChange={e => setLocalVal(Number(e.target.value))}
-          onMouseUp={() => set(key2, localVal)}
-          onTouchEnd={() => set(key2, localVal)}
-          style={{width:"100%", accentColor:color}}
-        />
-        <div style={{display:"flex", justifyContent:"space-between", fontSize:10, color:C.sub, marginTop:2}}>
-          <span>{min}{unit}</span><span>{max}{unit}</span>
-        </div>
-      </div>
-    );
-  };
-
   const handleReset = () => {
     setMeals({}); setWorkouts({});
     if (window.store) { store.set("ft_meals",{}); store.set("ft_workouts",{}); }
     setResetDone(true); setTimeout(()=>setResetDone(false),2000);
   };
 
-  // card 스타일에서 테두리(border) 제거 ✨
   const card = {background:C.card, borderRadius:18, padding:16, marginBottom:10};
   const goalName = curProfile.goal === "bulk" ? "💪 벌크업" : curProfile.goal === "maintain" ? "⚖️ 체중 유지" : "🔥 체중 감량";
 
@@ -737,6 +816,11 @@ function SettingsTab({C, settings, setSettings, setMeals, setWorkouts}) {
       <style>{`
         input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="number"] { -moz-appearance: textfield; }
+        input[type="range"] { -webkit-appearance: none; appearance: none; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.12); outline: none; cursor: pointer; }
+        input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.12); }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; cursor: pointer; background: var(--thumb-color, #f97316); margin-top: -7px; }
+        input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; border: none; cursor: pointer; background: var(--thumb-color, #f97316); }
+        input[type="range"]::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.12); }
       `}</style>
 
       <div style={card}>
@@ -784,10 +868,10 @@ function SettingsTab({C, settings, setSettings, setMeals, setWorkouts}) {
 
       <div style={card}>
         <div style={{fontSize:15, fontWeight:700, marginBottom:16}}>목표 칼로리 & 매크로 (수동 조절)</div>
-        <SliderRow label="목표 칼로리" val={settings.targetCal} min={0} max={4000} step={50} key2="targetCal" color={C.cal} unit="kcal"/>
-        <SliderRow label="목표 단백질" val={settings.targetProtein} min={0} max={300} key2="targetProtein" color={C.p} unit="g"/>
-        <SliderRow label="목표 탄수화물" val={settings.targetCarbs} min={0} max={500} key2="targetCarbs" color={C.c} unit="g"/>
-        <SliderRow label="목표 지방" val={settings.targetFat} min={0} max={200} key2="targetFat" color={C.f} unit="g"/>
+        <SliderRow label="목표 칼로리" val={settings.targetCal} min={0} max={4000} step={50} onCommit={v => set("targetCal", v)} color={C.cal} unit="kcal"/>
+        <SliderRow label="목표 단백질" val={settings.targetProtein} min={0} max={300} onCommit={v => set("targetProtein", v)} color={C.p} unit="g"/>
+        <SliderRow label="목표 탄수화물" val={settings.targetCarbs} min={0} max={500} onCommit={v => set("targetCarbs", v)} color={C.c} unit="g"/>
+        <SliderRow label="목표 지방" val={settings.targetFat} min={0} max={200} onCommit={v => set("targetFat", v)} color={C.f} unit="g"/>
       </div>
 
       <div style={card}>
@@ -795,7 +879,6 @@ function SettingsTab({C, settings, setSettings, setMeals, setWorkouts}) {
         <div style={{display:"flex", flexDirection:"column", gap:6, fontSize:13, color:C.sub, lineHeight:1.7}}>
           <div>👤 {curProfile.gender === "female" ? "여성" : "남성"} · {curProfile.age}세 · 키 {curProfile.height}cm · 체중 {curProfile.weight}kg</div>
           <div>🎯 목표: {goalName}</div>
-          {/* 하단 정보 박스의 배경색을 C.card2로 바꾸고 테두리 제거 ✨ */}
           <div style={{marginTop:6, padding:"8px 12px", background:C.card2, borderRadius:10, fontSize:12, color:C.sub}}>
             일일 목표: <span style={{color:C.cal, fontWeight:600}}>{settings.targetCal}kcal</span> · 단백질 <span style={{color:C.p, fontWeight:600}}>{settings.targetProtein}g</span> · 탄수 <span style={{color:C.c, fontWeight:600}}>{settings.targetCarbs}g</span> · 지방 <span style={{color:C.f, fontWeight:600}}>{settings.targetFat}g</span>
           </div>
@@ -804,14 +887,13 @@ function SettingsTab({C, settings, setSettings, setMeals, setWorkouts}) {
 
       <div style={{...card, marginBottom:0}}>
         <div style={{fontSize:15, fontWeight:700, marginBottom:14}}>앱 설정</div>
-        {/* separator(얇은 줄)는 구조를 위해 유지하되 색상을 C.border로 사용합니다 */}
         <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", paddingBottom:14, borderBottom:`1px solid ${C.border}`}}>
           <div>
             <div style={{fontSize:14, fontWeight:500}}>다크 모드</div>
             <div style={{fontSize:11, color:C.sub, marginTop:2}}>현재: {settings.dark?"어두운 모드":"밝은 모드"}</div>
           </div>
           <button onClick={()=>set("dark",!settings.dark)}
-            style={{width:50, height:28, borderRadius:14, background:settings.dark?C.cal:"#cbd5e1", border:`1px solid ${C.border}`, cursor:"pointer", position:"relative", transition:"background 0.3s", flexShrink:0}}>
+            style={{width:50, height:28, borderRadius:14, background:settings.dark?C.cal:"#cbd5e1", border:"none", cursor:"pointer", position:"relative", transition:"background 0.3s", flexShrink:0}}>
             <div style={{position:"absolute", top:4, left:settings.dark?24:4, width:20, height:20, borderRadius:"50%", background:"#fff", transition:"left 0.3s", boxShadow:"0 1px 3px rgba(0,0,0,0.3)"}}/>
           </button>
         </div>
@@ -819,7 +901,7 @@ function SettingsTab({C, settings, setSettings, setMeals, setWorkouts}) {
           <div style={{fontSize:14, fontWeight:500, marginBottom:4}}>데이터 초기화</div>
           <div style={{fontSize:11, color:C.sub, marginBottom:10}}>모든 식사 및 운동 기록이 영구 삭제됩니다</div>
           <button onClick={handleReset}
-            style={{background:resetDone?"#16a34a":"rgba(239,68,68,0.1)", color:resetDone?"#fff":"#ef4444", border:`1px solid ${resetDone?"#16a34a":"rgba(239,68,68,0.3)"}`, borderRadius:12, padding:"9px 14px", fontWeight:600, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:7, transition:"all 0.3s"}}>
+            style={{background:resetDone?"#16a34a":"rgba(239,68,68,0.1)", color:resetDone?"#fff":"#ef4444", border:"none", borderRadius:12, padding:"9px 14px", fontWeight:600, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:7, transition:"all 0.3s"}}>
             {resetDone ? <><Check size={14}/> 초기화 완료</> : <><Trash2 size={14}/> 데이터 초기화</>}
           </button>
         </div>
