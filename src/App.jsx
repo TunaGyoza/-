@@ -162,7 +162,6 @@ return (
           padding: 0; 
           background-color: ${C.bg}; 
           overflow-x: hidden;
-          overscroll-behavior-y: none; /* 아이폰 스크롤 튕김 방지 */
           -webkit-tap-highlight-color: transparent; 
         }
         * { box-sizing: border-box; }
