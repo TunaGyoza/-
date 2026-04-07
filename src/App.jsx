@@ -152,26 +152,28 @@ export default function FitnessApp() {
   ];
 
 return (
-    <div style={{...cssVars, background:C.bg, minHeight:"100vh", color:C.text, fontFamily:"-apple-system,BlinkMacSystemFont,'Pretendard',system-ui,sans-serif", maxWidth:440, margin:"0 auto", paddingBottom:80}}>
+    // ✨ 하단 메뉴바가 높아진 만큼, 컨텐츠가 가려지지 않게 paddingBottom을 80에서 100으로 늘렸습니다.
+    <div style={{...cssVars, background:C.bg, minHeight:"100vh", color:C.text, fontFamily:"-apple-system,BlinkMacSystemFont,'Pretendard',system-ui,sans-serif", maxWidth:440, margin:"0 auto", paddingBottom:100}}>
       
-      {/* ✨ 1. 브라우저 기본 여백 없애기 (외곽 테두리 제거) */}
+      {/* ✨ 1. 스크롤 끝부분 잘림(바운스 효과) 방지 */}
       <style>{`
         html, body { 
           margin: 0; 
           padding: 0; 
           background-color: ${C.bg}; 
           overflow-x: hidden;
+          overscroll-behavior-y: none; /* 아이폰 스크롤 튕김 방지 */
           -webkit-tap-highlight-color: transparent; 
         }
         * { box-sizing: border-box; }
       `}</style>
 
-      {/* ✨ 2. 네이티브 앱 감성의 반투명 블러 헤더 적용 */}
+      {/* Header */}
       <div style={{
-        background: `${C.bg}cc`, /* 약간 투명하게 처리 */
-        backdropFilter: "blur(12px)", /* 아이폰/갤럭시 네이티브 앱 특유의 블러 효과 */
+        background: `${C.bg}cc`, 
+        backdropFilter: "blur(12px)", 
         WebkitBackdropFilter: "blur(12px)",
-        padding: "calc(env(safe-area-inset-top) + 14px) 18px 10px", /* 폰 상단 카메라/노치 여백 확보 */
+        padding: "calc(env(safe-area-inset-top) + 14px) 18px 10px", 
         position: "sticky", 
         top: 0, 
         zIndex: 50, 
@@ -191,8 +193,8 @@ return (
         </button>
       </div>
 
-      {/* Content */}
-      <div style={{padding:"14px 12px 0"}}>
+      {/* ✨ 2. Content: 양옆 여백을 14px 12px 0 -> 14px 6px 0으로 줄여서 카드를 넓게 확장 */}
+      <div style={{padding:"14px 6px 0"}}>
         {tab==="home"     && <DashboardTab C={C} totals={totals} meals={meals} workouts={workouts} settings={settings} dark={dark}/>}
         {tab==="workout"  && <WorkoutTab C={C} todayWorkouts={todayWorkouts} workouts={workouts} addWorkout={addWorkout} removeWorkout={removeWorkout}/>}
         {tab==="meal"     && <MealTab C={C} todayMeals={todayMeals} addMeal={addMeal} removeMeal={removeMeal} totals={totals} settings={settings}/>}
@@ -200,8 +202,8 @@ return (
         {tab==="settings" && <SettingsTab C={C} settings={settings} setSettings={setSettings} setMeals={setMeals} setWorkouts={setWorkouts}/>}
       </div>
 
-      {/* Bottom Nav */}
-      <nav style={{position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:440, background:C.card, borderTop:`1px solid ${C.border}`, display:"flex", zIndex:50, paddingBottom:"env(safe-area-inset-bottom)"}}>
+      {/* ✨ 3. Bottom Nav: paddingBottom에 12px을 더 추가해서 아이폰 하단 바 위로 쓰기 편하게 끌어올림 */}
+      <nav style={{position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:440, background:C.card, borderTop:`1px solid ${C.border}`, display:"flex", zIndex:50, paddingBottom:"calc(env(safe-area-inset-bottom) + 12px)"}}>
         {tabs.map(({id,icon:Icon,label}) => (
           <button key={id} onClick={()=>setTab(id)} style={{flex:1, padding:"10px 0 8px", background:"none", border:"none", cursor:"pointer", color:tab===id?C.cal:C.sub, display:"flex", flexDirection:"column", alignItems:"center", gap:3, fontSize:10, fontWeight:tab===id?700:400, transition:"color 0.2s"}}>
             <Icon size={19}/>
