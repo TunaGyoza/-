@@ -152,10 +152,9 @@ export default function FitnessApp() {
   ];
 
 return (
-    // ✨ 하단 메뉴바가 높아진 만큼, 컨텐츠가 가려지지 않게 paddingBottom을 80에서 100으로 늘렸습니다.
-    <div style={{...cssVars, background:C.bg, minHeight:"100vh", color:C.text, fontFamily:"-apple-system,BlinkMacSystemFont,'Pretendard',system-ui,sans-serif", maxWidth:440, margin:"0 auto", paddingBottom:100}}>
+    // ✨ 1. maxWidth: 440 제한을 없애고 width: "100%"로 변경해서 화면을 꽉 채움!
+    <div style={{...cssVars, background:C.bg, minHeight:"100vh", color:C.text, fontFamily:"-apple-system,BlinkMacSystemFont,'Pretendard',system-ui,sans-serif", width:"100%", margin:"0 auto", paddingBottom:100}}>
       
-      {/* ✨ 1. 스크롤 끝부분 잘림(바운스 효과) 방지 */}
       <style>{`
         html, body { 
           margin: 0; 
@@ -192,7 +191,6 @@ return (
         </button>
       </div>
 
-      {/* ✨ 2. Content: 양옆 여백을 14px 12px 0 -> 14px 6px 0으로 줄여서 카드를 넓게 확장 */}
       <div style={{padding:"14px 6px 0"}}>
         {tab==="home"     && <DashboardTab C={C} totals={totals} meals={meals} workouts={workouts} settings={settings} dark={dark}/>}
         {tab==="workout"  && <WorkoutTab C={C} todayWorkouts={todayWorkouts} workouts={workouts} addWorkout={addWorkout} removeWorkout={removeWorkout}/>}
@@ -201,8 +199,8 @@ return (
         {tab==="settings" && <SettingsTab C={C} settings={settings} setSettings={setSettings} setMeals={setMeals} setWorkouts={setWorkouts}/>}
       </div>
 
-      {/* ✨ 3. Bottom Nav: paddingBottom에 12px을 더 추가해서 아이폰 하단 바 위로 쓰기 편하게 끌어올림 */}
-      <nav style={{position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:440, background:C.card, borderTop:`1px solid ${C.border}`, display:"flex", zIndex:50, paddingBottom:"calc(env(safe-area-inset-bottom) + 12px)"}}>
+      {/* ✨ 2. 하단 네비게이션 바 역시 화면 끝까지 꽉 차게 수정 */}
+      <nav style={{position:"fixed", bottom:0, left:0, width:"100%", background:C.card, borderTop:`1px solid ${C.border}`, display:"flex", zIndex:50, paddingBottom:"calc(env(safe-area-inset-bottom) + 12px)"}}>
         {tabs.map(({id,icon:Icon,label}) => (
           <button key={id} onClick={()=>setTab(id)} style={{flex:1, padding:"10px 0 8px", background:"none", border:"none", cursor:"pointer", color:tab===id?C.cal:C.sub, display:"flex", flexDirection:"column", alignItems:"center", gap:3, fontSize:10, fontWeight:tab===id?700:400, transition:"color 0.2s"}}>
             <Icon size={19}/>
